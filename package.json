@@ -3,15 +3,26 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
-    "precommit": "npm run build && lint-staged"
+    "test": "jest",
+    "precommit": "npm run build && npm run test && lint-staged"
   },
   "devDependencies": {
+    "@types/jest": "^22.1.0",
     "husky": "^0.14.3",
+    "jest": "^22.1.4",
     "lint-staged": "^6.0.1",
     "prettier": "^1.10.2",
+    "ts-jest": "^22.0.1",
     "typescript": "^2.6.2"
   },
   "lint-staged": {
     "*.{js,json,css,md}": ["prettier --write", "git add"]
+  },
+  "jest": {
+    "moduleFileExtensions": ["ts", "tsx", "js"],
+    "transform": {
+      "\\.(ts|tsx)$": "<rootDir>/node_modules/ts-jest/preprocessor.js"
+    },
+    "testRegex": "/src/test/.*\\.(test|spec)\\.(ts|tsx|js)$"
   }
 }
