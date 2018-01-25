@@ -1,0 +1,18 @@
+{
+  "name": "version-aware-code",
+  "version": "0.0.0",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "precommit": "npm run build && lint-staged"
+  },
+  "devDependencies": {
+    "husky": "^0.14.3",
+    "lint-staged": "^6.0.1",
+    "prettier": "^1.10.2",
+    "typescript": "^2.6.2"
+  },
+  "lint-staged": {
+    "*.{js,json,css,md}": ["prettier --write", "git add"]
+  }
+}
