@@ -1,5 +1,5 @@
-import { Api as PREVIOUS_Api } from '../../.git/fs/HEAD/worktree/src'
-import { Api as CURRENT_Api} from '../../src'
+import { Api as PREVIOUS_Api } from '../.git/fs/HEAD/worktree/src'
+import { Api as CURRENT_Api} from '../src'
 
 test("retro-compatibility", () => {
 

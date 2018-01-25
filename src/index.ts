@@ -4,16 +4,18 @@ export type Api = {
   getPeople(): Person[];
 };
 
-export type Person = { id: string; name: string; age: number };
+export type Person = { id: string; name: string; birth: Date };
 
 export const api: Api = {
   getPerson(id: string): Person {
-    return { id, name: "John Doe", age: 23 };
+    return people.get(id) as Person;
   },
   addPerson(person: Person): void {
-    return void person;
+    return void people.set(person.id, person);
   },
   getPeople(): Person[] {
-    return []
+    return Array.from(people.values());
   }
 };
+
+const people: Map<String, Person> = new Map

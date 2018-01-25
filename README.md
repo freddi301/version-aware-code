@@ -79,6 +79,62 @@ and a [git pre-commit hook](https://git-scm.com/book/it/v2/Customizing-Git-Git-H
 
 The `src/test/compatibility.test.ts` file can be left unchanged till we code PATCH or MINOR changes.
 
+Let's break the api and see how the compiler can be useful detecting the incompatibilities.
+
+```typescript
+export type Person = { id: string; name: string; birth: Date };
+```
+
+```text
+src/test/compatibility.test.ts(10,3): error TS90010: Type 'Api' is not assignable to type 'Api'. Two different types with this name exist, but they are unrelated.
+  Types of property 'getPerson' are incompatible.
+    Type '(id: string) => Person' is not assignable to type '(id: string) => Person'. Two different types with this name exist, but they are unrelated.
+      Type 'Person' is not assignable to type 'Person'. Two different types with this name exist, but they are unrelated.
+        Property 'age' is missing in type 'Person'.
+```
+
+But let's say we are aware of the fact that we are breaking retro-compatibility,
+
+so let's commit skipping the checks `git commit --no-verify`
+
+and bump the MAJOR version `git tag v2.0.0`.
+
+But we need to migrate our data from our old version.
+
+`src/index.version.adapter.ts`
+
+```typescript
+import { Person as Person_V_1_1_0 } from "../.git/fs/tags/v1.1.0/worktree/src";
+import { Person as Person_V_2_0_0 } from "../.git/fs/tags/v2.0.0/worktree/src";
+
+export const adapters = {
+  from: {
+    Person_V_1_1_0: {
+      to: {
+        Person_V_2_0_0: ({ id, name, age }: Person_V_1_1_0): Person_V_2_0_0 => {
+          const now = new Date();
+          const birth = new Date(String(now.getFullYear() - age));
+          return { id, name, birth };
+        }
+      }
+    }
+  }
+};
+```
+
+```typescript
+import { api as api_V_1_1_0 } from "../.git/fs/tags/v1.1.0/worktree/src";
+import { api } from "../src";
+import { adapt } from "../src/index.version.adapter";
+
+test("migration", () => {
+  api_V_1_1_0
+    .getPeople()
+    .map(adapt.from.Person_V_1_1_0.to.Person_V_2_0_0)
+    .forEach(api.addPerson);
+});
+```
+
 ## Running the example
 
 install:
