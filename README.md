@@ -12,7 +12,7 @@
 
 First step, we declare the contract our program will have with external world.
 
-`index.js`
+`src/index.js`
 
 ```typescript
 export type Api = {
@@ -32,9 +32,52 @@ export const api: Api = {
 };
 ```
 
-We gonna respect [semver](https://semver.org/)
+We gonna respect [semver](https://semver.org/).
 
-So we tag this commit as `v1.0.0`
+So we tag this commit as `v1.0.0`.
+
+Let's add a new capability to our API.
+
+```typescript
+export type Api = {
+  getPerson(id: string): Person;
+  addPerson(person: Person): void;
+  getPeople(): Person[];
+};
+```
+
+Resulting in a [MINOR](https://semver.org/#spec-item-7) change.
+
+Let's leverage the typechecker to check if our api is retrocompatible.
+
+`src/test/compatibility.test.ts`
+
+```typescript
+import { Api as PREVIOUS_Api } from "../../.git/fs/HEAD/worktree/src";
+import { Api as CURRENT_Api } from "../../src";
+
+test("retro-compatibility", () => {
+  let current: CURRENT_Api = null as any;
+  let previous: PREVIOUS_Api = null as any;
+
+  // this means we can safely replace the previous api with the new one
+  previous = current;
+
+  // but we can't downgrade the current api to the previous one
+  // uncomment next line and see why
+  // current = previous
+});
+```
+
+In this example we are using [git](https://git-scm.com/) for versioning,
+
+[git-fs](https://github.com/freddi301/git-fs) for exposing our whole code history,
+
+[TypeScript](https://www.typescriptlang.org/) for type-checking,
+
+and a [git pre-commit hook](https://git-scm.com/book/it/v2/Customizing-Git-Git-Hooks#_committing_workflow_hooks) that checks for us if we introduce breaking changes before committing.
+
+The `src/test/compatibility.test.ts` file can be left unchanged till we code PATCH or MINOR changes.
 
 ## Running the example
 
