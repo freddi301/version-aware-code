@@ -1,9 +1,12 @@
-// export const entryPoint = {
-//   api: null,
-//   version: null,
-//   upgrade(version: String) {
-//     migrate.from(this.version, api).to
-//     this.version = version;
-//     this.api = import(`../.git/fs/tags/${version}/worktree/src`);
-//   }
-// };
+import { migrate } from "./index.version.migration";
+
+export const entryPoint = {
+  api: null as any,
+  version: "" as string,
+  async upgrade(nextVersion: string) {
+    const nextApi = (await import(`../.git/fs/tags/${nextVersion}/worktree/src`)).api;
+    (migrate as any).from[this.version].to[nextVersion](this.api, nextApi);
+    this.version = nextVersion;
+    this.api = nextApi;
+  }
+};

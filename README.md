@@ -10,6 +10,12 @@
 * safe data migration
 * hotreload code keeping in memory data
 
+**when to use it**: In cases where you need to expose an API (aka third parties relies on your code interface or REST API).
+
+**when to NOT use it**: In cases where you do not need retrocompatibility this pattern risks only to add maintenance burden.
+
+## The API
+
 First step, we declare the contract our program will have with external world.
 
 `src/index.js`
@@ -31,6 +37,8 @@ export const api: Api = {
   }
 };
 ```
+
+## Compatibility
 
 We gonna respect [semver](https://semver.org/).
 
@@ -79,6 +87,8 @@ and a [git pre-commit hook](https://git-scm.com/book/it/v2/Customizing-Git-Git-H
 
 The `src/test/compatibility.test.ts` file can be left unchanged till we code PATCH or MINOR changes.
 
+## Breaking Changes
+
 Let's break the api and see how the compiler can be useful detecting the incompatibilities.
 
 ```typescript
@@ -98,6 +108,8 @@ But let's say we are aware of the fact that we are breaking retro-compatibility,
 so let's commit skipping the checks `git commit --no-verify`
 
 and bump the MAJOR version `git tag v2.0.0`.
+
+## Data Migration
 
 But we need to migrate our data from our old version.
 
@@ -135,6 +147,98 @@ test("migration", () => {
 });
 ```
 
+## Hot Reloading
+
+To achieve code reloading we need an entry point where we can leverage late binding:
+
+`src/entry-point.ts`
+
+```typescript
+import { migrate } from "./index.version.migration";
+
+export const entryPoint = {
+  api: null as any,
+  version: "" as string,
+  async upgrade(nextVersion: string) {
+    const nextApi = (await import(`../.git/fs/tags/${nextVersion}/worktree/src`))
+      .api;
+    (migrate as any).from[this.version].to[nextVersion](this.api, nextApi);
+    this.version = nextVersion;
+    this.api = nextApi;
+  }
+};
+```
+
+Upon calling `upgrade(version)` we leverage version control to retreive the desired `version`
+
+of the code and replace the current one, doing migration meantime.
+
+Here's a sample of migration code:
+
+`src/inde.version.migration.ts`
+
+```typescript
+import { Api as Api_V_2_0_0 } from "../.git/fs/tags/v2.0.0/worktree/src";
+import { Api as Api_V_2_0_1 } from "../.git/fs/tags/v2.0.1/worktree/src";
+import { adapt } from "../src/index.version.adapter";
+
+export const migrate = {
+  from: {
+    "": {
+      to: {
+        "v2.0.0"(fromApi: null, toApi: Api_V_2_0_0) {},
+        "v2.0.1"(fromApi: null, toApi: Api_V_2_0_1) {}
+      }
+    },
+    "v2.0.0": {
+      to: {
+        "v2.0.1"(fromApi: Api_V_2_0_0, toApi: Api_V_2_0_1) {
+          fromApi
+            .getPeople()
+            .map(adapt.from.Person_V_2_0_0.to.Person_V_2_0_1) // try to comment this line
+            .forEach(toApi.addPerson);
+        }
+      }
+    }
+  }
+};
+```
+
+Lets test our hot-reloading:
+
+```typescript
+import { Api as Api_V_2_0_0 } from "../.git/fs/tags/v2.0.0/worktree/src";
+import { Api as Api_V_2_0_1 } from "../.git/fs/tags/v2.0.1/worktree/src";
+
+import { entryPoint } from "../src/entry-point";
+
+test("hot reloading code with data migration", async () => {
+  await entryPoint.upgrade("v2.0.0");
+  (entryPoint.api as Api_V_2_0_0).addPerson({
+    id: "1",
+    name: "John",
+    birth: new Date("1990")
+  });
+  expect((entryPoint.api as Api_V_2_0_0).getPeople()).toEqual([
+    { id: "1", name: "John", birth: new Date("1990") }
+  ]);
+  await entryPoint.upgrade("v2.0.1");
+  expect((entryPoint.api as Api_V_2_0_1).getPeople()).toEqual([
+    { id: "1", name: "John", birth: new Date("1990"), gender: "unknown" }
+  ]);
+  (entryPoint.api as Api_V_2_0_1).addPerson({
+    id: "2",
+    name: "Epoch",
+    birth: new Date(0),
+    gender: "abstract"
+  });
+  expect((entryPoint.api as Api_V_2_0_1).getPeople()).toEqual([
+    { id: "1", name: "John", birth: new Date("1990"), gender: "unknown" },
+    { id: "2", name: "Epoch", birth: new Date(0), gender: "abstract" }
+  ]);
+});
+```
+
 ## Running the example
 
 install:
@@ -151,3 +255,4 @@ do:
 3. `npm install`
 4. open the folder with **Visual Studio Code**
 5. read the `README.md`
+6. You can follow the git commits step by step

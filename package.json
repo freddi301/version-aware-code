@@ -2,7 +2,7 @@
   "name": "version-aware-code",
   "main": "lib/src/index.js",
   "scripts": {
-    "build": "rm -rf lib && tsc",
+    "build": "rm -rf lib/* && tsc",
     "test": "npm run build && jest",
     "precommit": "npm run build && npm run test && lint-staged"
   },
